@@ -16,7 +16,7 @@
 参考：
 faster_rcnn_pytorch中的roi_pooling源码解析
 ROI Pooling原理及实现
-####ROI POOLING原理roi_pooling提出自Fast RCNN论文中，用于将selective se">
+ROI POOLING原理roi_pooling提出自Fast RCNN论文中，用于将selective search">
 
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Faster RCNN源码解读(2)-roi_pooling | Dust In The Pan">
@@ -24,7 +24,7 @@ ROI Pooling原理及实现
 参考：
 faster_rcnn_pytorch中的roi_pooling源码解析
 ROI Pooling原理及实现
-####ROI POOLING原理roi_pooling提出自Fast RCNN论文中，用于将selective se">
+ROI POOLING原理roi_pooling提出自Fast RCNN论文中，用于将selective search">
 
     <meta property="og:type" content="article">
     <meta property="og:title" content="Faster RCNN源码解读(2)-roi_pooling | Dust In The Pan">
@@ -32,7 +32,7 @@ ROI Pooling原理及实现
 参考：
 faster_rcnn_pytorch中的roi_pooling源码解析
 ROI Pooling原理及实现
-####ROI POOLING原理roi_pooling提出自Fast RCNN论文中，用于将selective se">
+ROI POOLING原理roi_pooling提出自Fast RCNN论文中，用于将selective search">
 
     
     <meta name="author" content="AzeroGYH">
@@ -156,14 +156,14 @@ ROI Pooling原理及实现
 <p>参考：</p>
 <p><a href="https://www.jianshu.com/p/d674e16ce896" target="_blank" rel="noopener">faster_rcnn_pytorch中的roi_pooling源码解析</a></p>
 <p><a href="https://blog.csdn.net/u011436429/article/details/80279536" target="_blank" rel="noopener">ROI Pooling原理及实现</a></p>
-<p>####ROI POOLING原理<br>roi_pooling提出自Fast RCNN论文中，用于将selective search提取出的region proposals映射到cnn网络产生的feature map中并且处理成特定大小的输出（主要是为了之后的全连接层的输入），其思想来自于sppnet。<br><img src="https://upload-images.jianshu.io/upload_images/8800331-a6d55e3c1c3c941f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="ROI POOLING(图片来源自图中链接)"></p>
+<h4 id="ROI-POOLING原理"><a href="#ROI-POOLING原理" class="headerlink" title="ROI POOLING原理"></a>ROI POOLING原理</h4><p>roi_pooling提出自Fast RCNN论文中，用于将selective search提取出的region proposals映射到cnn网络产生的feature map中并且处理成特定大小的输出（主要是为了之后的全连接层的输入），其思想来自于sppnet。<br><img src="https://upload-images.jianshu.io/upload_images/8800331-a6d55e3c1c3c941f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="ROI POOLING(图片来源自图中链接)"></p>
 <p>ROI pooling具体操作如下：</p>
 <ol>
 <li>根据输入image，将ROI映射到feature map对应位置；</li>
 <li>将映射后的区域划分为相同大小的sections（sections数量与输出的维度相同）；</li>
 <li>对每个sections进行max pooling操作；<br><img src="https://upload-images.jianshu.io/upload_images/8800331-3109c209533e3b1b.gif?imageMogr2/auto-orient/strip" alt="roi pooling的动态图示过程(图片来源自图中链接)"></li>
 </ol>
-<p>####roi_pooling代码实现<br>该代码中具体实现由c实现，先看roi pooling部分代码目录结构<br><img src="https://upload-images.jianshu.io/upload_images/8800331-c8454d90a34e3f06.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="roi pooling代码目录结构"></p>
+<h4 id="roi-pooling代码实现"><a href="#roi-pooling代码实现" class="headerlink" title="roi_pooling代码实现"></a>roi_pooling代码实现</h4><p>该代码中具体实现由c实现，先看roi pooling部分代码目录结构<br><img src="https://upload-images.jianshu.io/upload_images/8800331-c8454d90a34e3f06.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="roi pooling代码目录结构"></p>
 <ul>
 <li><strong>src</strong>文件夹下是c和cuda版本的源码，其中roi_pooling的操作的foward是c和cuda版本都有的，而backward仅写了cuda版本的代码。</li>
 <li><strong>functions</strong>文件夹下的roi_pool.py是继承了torch.autograd.Function类，实现RoI层的foward和backward函数。</li>
