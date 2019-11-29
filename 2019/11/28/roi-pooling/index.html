@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="z">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    
+    <title>Faster RCNN源码解读(2)-roi_pooling | Dust In The Pan</title>
+    <meta name="renderer" content="webkit">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+    <meta name="description" content="本系列的代码来自：https://github.com/jwyang/faster-rcnn.pytorch大家可以去star一下，目前支持pytorch1.0系列
+参考：
+faster_rcnn_pytorch中的roi_pooling源码解析
+ROI Pooling原理及实现
+####ROI POOLING原理roi_pooling提出自Fast RCNN论文中，用于将selective se">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Faster RCNN源码解读(2)-roi_pooling | Dust In The Pan">
+    <meta name="twitter:description" content="本系列的代码来自：https://github.com/jwyang/faster-rcnn.pytorch大家可以去star一下，目前支持pytorch1.0系列
+参考：
+faster_rcnn_pytorch中的roi_pooling源码解析
+ROI Pooling原理及实现
+####ROI POOLING原理roi_pooling提出自Fast RCNN论文中，用于将selective se">
+
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Faster RCNN源码解读(2)-roi_pooling | Dust In The Pan">
+    <meta property="og:description" content="本系列的代码来自：https://github.com/jwyang/faster-rcnn.pytorch大家可以去star一下，目前支持pytorch1.0系列
+参考：
+faster_rcnn_pytorch中的roi_pooling源码解析
+ROI Pooling原理及实现
+####ROI POOLING原理roi_pooling提出自Fast RCNN论文中，用于将selective se">
+
+    
+    <meta name="author" content="AzeroGYH">
+    
+    <link rel="stylesheet" href="/css/vno.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css">
+
+    
+    <link rel="icon" href="/images/image_favicon_small.ico">
+    
+
+    <meta name="generator" content="hexo"/>
+    
+
+    <link rel="canonical" href="http://yoursite.com/2019/11/28/roi-pooling/"/>
+
+                 
+</head>
+
+<body class="home-template no-js">
+    <script src="//cdn.bootcss.com/jquery/2.1.4/jquery.min.js"></script>
+    <script src="/js/main.js"></script>
+    <span class="mobile btn-mobile-menu">
+        <i class="fa fa-list btn-mobile-menu__icon"></i>
+        <i class="fa fa-angle-up btn-mobile-close__icon hidden"></i>
+    </span>
+
+    
+<header class="panel-cover panel-cover--collapsed" style="background-image: url(/images/bg1.jpg)">
+  <div class="panel-main">
+    <div class="panel-main__inner panel-inverted">
+    <div class="panel-main__content">
+
+        <a href="/" title="前往 Dust In The Pan 的主页"><img src="/images/image.jpg" width="80" alt="Dust In The Pan logo" class="panel-cover__logo logo" /></a>
+        <h1 class="panel-cover__title panel-title"><a href="/" title="link to homepage for Dust In The Pan">Dust In The Pan</a></h1>
+        
+        <hr class="panel-cover__divider" />
+        <p class="panel-cover__description"></p>
+        <hr class="panel-cover__divider panel-cover__divider--secondary" />
+
+        <div class="navigation-wrapper">
+          <div>
+          <nav class="cover-navigation cover-navigation--primary">
+            <ul class="navigation">
+              <li class="navigation__item"><a href="/#blog" title="访问博客" class="blog-button">文字阁</a></li>
+            
+              <li class="navigation__item"><a href="/archives">黄金屋</a></li>
+            
+              <li class="navigation__item"><a href="/archives">幻想间</a></li>
+            
+              <li class="navigation__item"><a href="/about">关于我</a></li>
+            
+            </ul>
+          </nav>
+          </div>
+          <div>
+          <nav class="cover-navigation navigation--social">
+  <ul class="navigation">
+
+  <!-- Weibo-->
+  
+
+  <!-- Github -->
+  
+  <li class="navigation__item">
+    <a href="https://github.com/AzeroGYH/" title="查看我的GitHub主页" target="_blank">
+      <i class='social fa fa-github'></i>
+      <span class="label">Github</span>
+    </a>
+  </li>
+
+
+<!-- Stack Overflow -->
+        
+
+  <!-- Google Plus -->
+  
+
+<!-- Facebook -->
+
+  
+<!-- Twitter -->
+
+  
+
+
+
+  </ul>
+</nav>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="panel-cover--overlay cover-purple"></div>
+  </div> 
+</header>
+
+    <div class="content-wrapper">
+        <div class="content-wrapper__inner">
+            <article class="post-container post-container--single">
+
+  <header class="post-header">
+    <div class="post-meta">
+      <time datetime="2019-11-28T06:51:27.000Z" class="post-list__meta--date date">2019-11-28</time> &#8226; <span class="post-meta__tags tags">于 
+  <a class="tag-link" href="/tags/Faster-RCNN%E6%BA%90%E7%A0%81/" rel="tag">Faster RCNN源码</a>
+ </span>
+      <span class="page-pv">
+       阅读 <span id="busuanzi_value_page_pv"><i class="fa fa-spinner fa-spin"></i></span>
+      </span> 
+   
+    </div>
+    <h1 class="post-title">Faster RCNN源码解读(2)-roi_pooling</h1>
+  </header>
+
+  <section class="post">
+    <p>本系列的代码来自：<a href="https://github.com/jwyang/faster-rcnn.pytorch" target="_blank" rel="noopener">https://github.com/jwyang/faster-rcnn.pytorch</a><br>大家可以去star一下，目前支持pytorch1.0系列</p>
+<p>参考：</p>
+<p><a href="https://www.jianshu.com/p/d674e16ce896" target="_blank" rel="noopener">faster_rcnn_pytorch中的roi_pooling源码解析</a></p>
+<p><a href="https://blog.csdn.net/u011436429/article/details/80279536" target="_blank" rel="noopener">ROI Pooling原理及实现</a></p>
+<p>####ROI POOLING原理<br>roi_pooling提出自Fast RCNN论文中，用于将selective search提取出的region proposals映射到cnn网络产生的feature map中并且处理成特定大小的输出（主要是为了之后的全连接层的输入），其思想来自于sppnet。<br><img src="https://upload-images.jianshu.io/upload_images/8800331-a6d55e3c1c3c941f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="ROI POOLING(图片来源自图中链接)"></p>
+<p>ROI pooling具体操作如下：</p>
+<ol>
+<li>根据输入image，将ROI映射到feature map对应位置；</li>
+<li>将映射后的区域划分为相同大小的sections（sections数量与输出的维度相同）；</li>
+<li>对每个sections进行max pooling操作；<br><img src="https://upload-images.jianshu.io/upload_images/8800331-3109c209533e3b1b.gif?imageMogr2/auto-orient/strip" alt="roi pooling的动态图示过程(图片来源自图中链接)"></li>
+</ol>
+<p>####roi_pooling代码实现<br>该代码中具体实现由c实现，先看roi pooling部分代码目录结构<br><img src="https://upload-images.jianshu.io/upload_images/8800331-c8454d90a34e3f06.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="roi pooling代码目录结构"></p>
+<ul>
+<li><strong>src</strong>文件夹下是c和cuda版本的源码，其中roi_pooling的操作的foward是c和cuda版本都有的，而backward仅写了cuda版本的代码。</li>
+<li><strong>functions</strong>文件夹下的roi_pool.py是继承了torch.autograd.Function类，实现RoI层的foward和backward函数。</li>
+<li><strong>modules</strong>文件夹下的roi_pool.py是继承了torch.nn.Modules类，实现了对RoI层的封装，此时RoI层就跟ReLU层一样的使用了。</li>
+<li><strong>_ext</strong>文件夹下还有个roi_pooling文件夹，这个文件夹是存储src中c，cuda编译过后的文件的，编译过后就可以被funcitons中的roi_pool.py调用了。</li>
+</ul>
+<ol>
+<li>这里先看cpu版本的c语言roi_pooling.c<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;TH/TH.h&gt; // pytorch的C拓展</span><br><span class="line">#include &lt;math.h&gt;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * 函数：进行roi_pooling操作</span><br><span class="line"> * pooled_height:pooling后的高度大小</span><br><span class="line"> * pooled_width:pooling后的宽度大小</span><br><span class="line"> * spatial_scale:下采样率</span><br><span class="line"> * features:特征图</span><br><span class="line"> * rois:rois</span><br><span class="line"> * output:处理后的rois</span><br><span class="line"> **/</span><br><span class="line"></span><br><span class="line">int roi_pooling_forward(int pooled_height, int pooled_width, float spatial_scale,</span><br><span class="line">                        THFloatTensor * features, THFloatTensor * rois, THFloatTensor * output)</span><br><span class="line">&#123;</span><br><span class="line">    // Grab the input tensor 获取输入的tensor，</span><br><span class="line">    // 转换为一维数组，所以需要一维一维进行处理</span><br><span class="line">    float * data_flat = THFloatTensor_data(features);</span><br><span class="line">    float * rois_flat = THFloatTensor_data(rois);</span><br><span class="line"></span><br><span class="line">    float * output_flat = THFloatTensor_data(output);</span><br><span class="line"></span><br><span class="line">    // Number of ROIs </span><br><span class="line">    int num_rois = THFloatTensor_size(rois, 0); // rois的数量</span><br><span class="line">    int size_rois = THFloatTensor_size(rois, 1); // roi的占用的大小</span><br><span class="line">    // batch size</span><br><span class="line">    int batch_size = THFloatTensor_size(features, 0);</span><br><span class="line">    // cpu版本，batch_size一般为1</span><br><span class="line">    if(batch_size != 1)</span><br><span class="line">    &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">    // data height，特征图的大小</span><br><span class="line">    int data_height = THFloatTensor_size(features, 1);  </span><br><span class="line">    // data width</span><br><span class="line">    int data_width = THFloatTensor_size(features, 2);</span><br><span class="line">    // Number of channels</span><br><span class="line">    int num_channels = THFloatTensor_size(features, 3);</span><br><span class="line"></span><br><span class="line">    // Set all element of the output tensor to -inf.</span><br><span class="line">    THFloatStorage_fill(THFloatTensor_storage(output), -1);</span><br><span class="line"></span><br><span class="line">    // For each ROI R = [batch_index x1 y1 x2 y2]: max pool over R</span><br><span class="line">    int index_roi = 0;</span><br><span class="line">    int index_output = 0;</span><br><span class="line">    int n;</span><br><span class="line">    for (n = 0; n &lt; num_rois; ++n) // 对每一个ROI进行操作</span><br><span class="line">    &#123;</span><br><span class="line">        // 获取ROI的序号及坐标</span><br><span class="line">        // spatial_scale：输入图像到特征图的缩放比例</span><br><span class="line">        int roi_batch_ind = rois_flat[index_roi + 0];</span><br><span class="line">        int roi_start_w = round(rois_flat[index_roi + 1] * spatial_scale);</span><br><span class="line">        int roi_start_h = round(rois_flat[index_roi + 2] * spatial_scale);</span><br><span class="line">        int roi_end_w = round(rois_flat[index_roi + 3] * spatial_scale);</span><br><span class="line">        int roi_end_h = round(rois_flat[index_roi + 4] * spatial_scale);</span><br><span class="line">        //      CHECK_GE(roi_batch_ind, 0);</span><br><span class="line">        //      CHECK_LT(roi_batch_ind, batch_size);</span><br><span class="line"></span><br><span class="line">        // 获取ROI的height和width</span><br><span class="line">        int roi_height = fmaxf(roi_end_h - roi_start_h + 1, 1);</span><br><span class="line">        int roi_width = fmaxf(roi_end_w - roi_start_w + 1, 1);</span><br><span class="line"></span><br><span class="line">        // 获得pooling时height和width方向上的分割后每格的高度和宽度</span><br><span class="line">        float bin_size_h = (float)(roi_height) / (float)(pooled_height);</span><br><span class="line">        float bin_size_w = (float)(roi_width) / (float)(pooled_width);</span><br><span class="line"></span><br><span class="line">        // 批索引*特征图图高度*特征图宽度*通道数，获得该roi对应的feature map的数据开始下标索引</span><br><span class="line">        int index_data = roi_batch_ind * data_height * data_width * num_channels;</span><br><span class="line">        //ROI pooling后的大小</span><br><span class="line">        const int output_area = pooled_width * pooled_height;</span><br><span class="line"></span><br><span class="line">        int c, ph, pw;</span><br><span class="line">        for (ph = 0; ph &lt; pooled_height; ++ph)</span><br><span class="line">        &#123;</span><br><span class="line">            for (pw = 0; pw &lt; pooled_width; ++pw)</span><br><span class="line">            &#123;</span><br><span class="line">                // 这里得到相对每个roi分割后每份的宽度和高度</span><br><span class="line">                int hstart = (floor((float)(ph) * bin_size_h));</span><br><span class="line">                int wstart = (floor((float)(pw) * bin_size_w));</span><br><span class="line">                int hend = (ceil((float)(ph + 1) * bin_size_h));</span><br><span class="line">                int wend = (ceil((float)(pw + 1) * bin_size_w));</span><br><span class="line"></span><br><span class="line">                // 这里得到相对feature map分割后每份的宽度和高度,</span><br><span class="line">                // 所以加上整个roi相对于feature map的左上角坐标</span><br><span class="line">                hstart = fminf(fmaxf(hstart + roi_start_h, 0), data_height);</span><br><span class="line">                hend = fminf(fmaxf(hend + roi_start_h, 0), data_height);</span><br><span class="line">                wstart = fminf(fmaxf(wstart + roi_start_w, 0), data_width);</span><br><span class="line">                wend = fminf(fmaxf(wend + roi_start_w, 0), data_width);</span><br><span class="line"></span><br><span class="line">                // pool之后的的序号，按行</span><br><span class="line">                const int pool_index = index_output + (ph * pooled_width + pw);</span><br><span class="line">                int is_empty = (hend &lt;= hstart) || (wend &lt;= wstart);</span><br><span class="line">                if (is_empty) // 一般不会有这种情况吧</span><br><span class="line">                &#123;</span><br><span class="line">                    for (c = 0; c &lt; num_channels * output_area; c += output_area)</span><br><span class="line">                    &#123;</span><br><span class="line">                        output_flat[pool_index + c] = 0;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                else // 正常的情况，进行max pooling</span><br><span class="line">                &#123;</span><br><span class="line">                    int h, w, c;</span><br><span class="line">                    for (h = hstart; h &lt; hend; ++h) // 垂直方向</span><br><span class="line">                    &#123;</span><br><span class="line">                        for (w = wstart; w &lt; wend; ++w) // 水平方向</span><br><span class="line">                        &#123;</span><br><span class="line">                            for (c = 0; c &lt; num_channels; ++c) // 通道维数</span><br><span class="line">                            &#123;</span><br><span class="line">                                // 根据坐标得到下标索引</span><br><span class="line">                                const int index = (h * data_width + w) * num_channels + c;</span><br><span class="line">                                // 加上index_data得到相对于整个map的下标索引</span><br><span class="line">                                // 获取最大值进行max pooling</span><br><span class="line">                                if (data_flat[index_data + index] &gt; output_flat[pool_index + c * output_area])</span><br><span class="line">                                &#123;</span><br><span class="line">                                    output_flat[pool_index + c * output_area] = data_flat[index_data + index];</span><br><span class="line">                                &#125;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // Increment ROI index</span><br><span class="line">        // rois索引变成下一个</span><br><span class="line">        index_roi += size_rois; </span><br><span class="line">        // 输出索引变成下一个开始，即加上pooling后大小*通道数</span><br><span class="line">        index_output += pooled_height * pooled_width * num_channels; </span><br><span class="line">    &#125;</span><br><span class="line">    return 1;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>然后看functions下的roi_pooling.py，此处调用src实现的具体roi pooling操作<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">#-----------------------------------------</span><br><span class="line"># 继承了torch.autograd.Function类，实现RoI层的foward和backward函数。</span><br><span class="line"># modules中的roi_pool实现层的封装</span><br><span class="line">#-----------------------------------------</span><br><span class="line"></span><br><span class="line">import torch</span><br><span class="line"># 对Function进行拓展，使其满足我们自己的需要，</span><br><span class="line"># 而拓展就需要自定义Function的forward运算，</span><br><span class="line"># 已经对应的backward运算，同时在forward中需要通过保存输入值用于backward</span><br><span class="line">from torch.autograd import Function # 自定义的内容</span><br><span class="line"></span><br><span class="line">from .._ext import roi_pooling</span><br><span class="line">import pdb # python调试器</span><br><span class="line"></span><br><span class="line">class RoIPoolFunction(Function):</span><br><span class="line">    def __init__(ctx, pooled_height, pooled_width, spatial_scale):</span><br><span class="line">        ctx.pooled_width = pooled_width</span><br><span class="line">        ctx.pooled_height = pooled_height</span><br><span class="line">        ctx.spatial_scale = spatial_scale</span><br><span class="line">        ctx.feature_size = None</span><br><span class="line"></span><br><span class="line">    # forward(ctx, *args, **kwargs)</span><br><span class="line">    # ctx: 类似于self,可以在backward中调用</span><br><span class="line">    def forward(ctx, features, rois): </span><br><span class="line">        ctx.feature_size = features.size()           </span><br><span class="line">        batch_size, num_channels, data_height, data_width = ctx.feature_size</span><br><span class="line">        num_rois = rois.size(0)</span><br><span class="line">        output = features.new(num_rois, num_channels, ctx.pooled_height, ctx.pooled_width).zero_()</span><br><span class="line">        ctx.argmax = features.new(num_rois, num_channels, ctx.pooled_height, ctx.pooled_width).zero_().int()</span><br><span class="line">        ctx.rois = rois</span><br><span class="line">        if not features.is_cuda:</span><br><span class="line">            _features = features.permute(0, 2, 3, 1) # tensor.permute(),改变tensor的维的顺序</span><br><span class="line">            roi_pooling.roi_pooling_forward(ctx.pooled_height, ctx.pooled_width, ctx.spatial_scale,</span><br><span class="line">                                            _features, rois, output) # 调用_ext下的编译好的cpu版本函数</span><br><span class="line">        else:</span><br><span class="line">            roi_pooling.roi_pooling_forward_cuda(ctx.pooled_height, ctx.pooled_width, ctx.spatial_scale,</span><br><span class="line">                                                 features, rois, output, ctx.argmax) #调用_ext下的编译好的gpu版本函数</span><br><span class="line"></span><br><span class="line">        return output</span><br><span class="line">    </span><br><span class="line">    # backward(ctx, *grad_outputs)</span><br><span class="line">    def backward(ctx, grad_output):</span><br><span class="line">        assert(ctx.feature_size is not None and grad_output.is_cuda)</span><br><span class="line">        batch_size, num_channels, data_height, data_width = ctx.feature_size</span><br><span class="line">        grad_input = grad_output.new(batch_size, num_channels, data_height, data_width).zero_()</span><br><span class="line"></span><br><span class="line">        # 这个地方只有gpu版本</span><br><span class="line">        roi_pooling.roi_pooling_backward_cuda(ctx.pooled_height, ctx.pooled_width, ctx.spatial_scale,</span><br><span class="line">                                              grad_output, ctx.rois, grad_input, ctx.argmax)</span><br><span class="line"></span><br><span class="line">        return grad_input, None</span><br></pre></td></tr></table></figure></li>
+<li>最后是<strong>modules</strong>下的roi_pooling.py，此处我们就实现了roi_pooling层了，此处调用functions下的roi_pooling.py定义的RoIPoolFunction()函数<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">#-------------------------------</span><br><span class="line"># 对roi_pooling层的封装，就是ROI Pooling Layer了</span><br><span class="line">#-------------------------------</span><br><span class="line"></span><br><span class="line">from torch.nn.modules.module import Module</span><br><span class="line">from ..functions.roi_pool import RoIPoolFunction # 导入functions文件夹下的RoIPoolFunction</span><br><span class="line"></span><br><span class="line">class _RoIPooling(Module):</span><br><span class="line">    def __init__(self, pooled_height, pooled_width, spatial_scale):</span><br><span class="line">        super(_RoIPooling, self).__init__()</span><br><span class="line"></span><br><span class="line">        self.pooled_width = int(pooled_width)</span><br><span class="line">        self.pooled_height = int(pooled_height)</span><br><span class="line">        self.spatial_scale = float(spatial_scale)</span><br><span class="line"></span><br><span class="line">    def forward(self, features, rois):</span><br><span class="line">        return RoIPoolFunction(self.pooled_height, self.pooled_width, self.spatial_scale)(features, rois)</span><br></pre></td></tr></table></figure>
+
+
+
+</li>
+</ol>
+
+  </section>
+
+</article>
+
+<section class="read-more">
+           
+    
+        
+        
+               
+            <div class="read-more-item">
+                <span class="read-more-item-dim">更早的文章</span>
+                <h2 class="post-list__post-title post-title"><a href="/2019/11/25/nms/" title="Faster RCNN源码解读(1)-NMS非极大值抑制">Faster RCNN源码解读(1)-NMS非极大值抑制</a></h2>
+                <p class="excerpt">
+                
+                本系列的代码来自：https://github.com/jwyang/faster-rcnn.pytorch大家可以去star一下，目前支持pytorch1.0系列
+参考：
+非极大值抑制（Non-Maximum Suppression，NMS）py_cpu_nms.py
+
+1234567891011
+                &hellip;
+                </p>
+                <div class="post-list__meta"><time datetime="2019-11-24T16:52:05.000Z" class="post-list__meta--date date">2019-11-25</time> &#8226; <span class="post-list__meta--tags tags">于 
+  <a class="tag-link" href="/tags/Faster-RCNN%E6%BA%90%E7%A0%81/" rel="tag">Faster RCNN源码</a>
+</span><a class="btn-border-small" href="/2019/11/25/nms/">继续阅读</a></div>
+                       
+            </div>
+        
+     
+   
+   
+  
+</section>
+
+  
+
+            <footer class="footer">
+    <span class="footer__copyright">
+        &copy; 2019 AzeroGYH - 本站点采用 <a href="http://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">知识共享署名-非商业性使用-相同方式共享 4.0 国际许可协议</a>
+       
+    </span>
+    <span class="footer__copyright">
+             - 基于 <a href="http://hexo.io" target="_blank" rel="noopener">Hexo</a> 搭建，使用 <a href="https://github.com/monniya/hexo-theme-new-vno " target="_blank" rel="noopener">new-vno</a> 主题，由<a href="https://monniya.com " target="_blank" rel="noopener">@Monniya</a> 修改自 <a href="https://github.com/lenbo-ma/hexo-theme-vno" target="_blank">Vno</a>, 原创出自<a href="http://github.com/onevcat/vno" target="_blank">onevcat</a>
+         </span>
+       
+    
+    
+</footer>
+
+
+        </div>
+    </div>
+
+     
+<script>
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	ga('create', 'UA-78918255-1', 'auto');
+	ga('send', 'pageview');
+</script>
+
+    
+    <script>
+        var _hmt = _hmt || [];
+        (function() {
+            var hm = document.createElement("script");
+            hm.src = "//hm.baidu.com/hm.js?9cdad07c755fa23f6aced510c6760e87";
+            var s = document.getElementsByTagName("script")[0]; 
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+
+
+    <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    
+    
+</body>
+</html>

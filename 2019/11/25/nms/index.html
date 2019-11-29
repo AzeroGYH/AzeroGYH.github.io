@@ -12,24 +12,27 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
-    <meta name="description" content="参考：
+    <meta name="description" content="本系列的代码来自：https://github.com/jwyang/faster-rcnn.pytorch大家可以去star一下，目前支持pytorch1.0系列
+参考：
 非极大值抑制（Non-Maximum Suppression，NMS）py_cpu_nms.py
 
-1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556# ---------------------------# 非极大值抑制（Non-M">
+123456789101112131415161718192021222324252627282930313233343536">
 
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Faster RCNN源码解读(1)-NMS非极大值抑制 | Dust In The Pan">
-    <meta name="twitter:description" content="参考：
+    <meta name="twitter:description" content="本系列的代码来自：https://github.com/jwyang/faster-rcnn.pytorch大家可以去star一下，目前支持pytorch1.0系列
+参考：
 非极大值抑制（Non-Maximum Suppression，NMS）py_cpu_nms.py
 
-1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556# ---------------------------# 非极大值抑制（Non-M">
+123456789101112131415161718192021222324252627282930313233343536">
 
     <meta property="og:type" content="article">
     <meta property="og:title" content="Faster RCNN源码解读(1)-NMS非极大值抑制 | Dust In The Pan">
-    <meta property="og:description" content="参考：
+    <meta property="og:description" content="本系列的代码来自：https://github.com/jwyang/faster-rcnn.pytorch大家可以去star一下，目前支持pytorch1.0系列
+参考：
 非极大值抑制（Non-Maximum Suppression，NMS）py_cpu_nms.py
 
-1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556# ---------------------------# 非极大值抑制（Non-M">
+123456789101112131415161718192021222324252627282930313233343536">
 
     
     <meta name="author" content="AzeroGYH">
@@ -149,7 +152,8 @@
   </header>
 
   <section class="post">
-    <p>参考：</p>
+    <p>本系列的代码来自：<a href="https://github.com/jwyang/faster-rcnn.pytorch" target="_blank" rel="noopener">https://github.com/jwyang/faster-rcnn.pytorch</a><br>大家可以去star一下，目前支持pytorch1.0系列</p>
+<p>参考：</p>
 <p><a href="https://www.cnblogs.com/makefile/p/nms.html" target="_blank" rel="noopener">非极大值抑制（Non-Maximum Suppression，NMS）</a><br><a href="https://github.com/rbgirshick/py-faster-rcnn/blob/master/lib/nms/py_cpu_nms.py" target="_blank" rel="noopener">py_cpu_nms.py</a></p>
 <p><img src="https://upload-images.jianshu.io/upload_images/8800331-500fa17d55b77c88.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="image.png"></p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"># ---------------------------</span><br><span class="line"># 非极大值抑制（Non-Maximum Suppression，NMS），顾名思义就是抑制不是极大值的元素</span><br><span class="line"># 在faster rcnn中最后生成的回归框数量特别多且重叠，一般都是用NMS来进行边框过滤</span><br><span class="line"># ---------------------------</span><br><span class="line"></span><br><span class="line">from __future__ import absolute_import  # 绝对路径导入</span><br><span class="line"></span><br><span class="line">import numpy as np</span><br><span class="line">import torch</span><br><span class="line"></span><br><span class="line"># 输入：</span><br><span class="line">#   dets: 边界框集合(???类型),每一个单元为(x1,y1,x2,y2,confidence)</span><br><span class="line">#   thresh: iou过滤阈值</span><br><span class="line"># 输出：nms处理过的边界框</span><br><span class="line"></span><br><span class="line">def nms_cpu(dets, thresh):</span><br><span class="line">    dets = dets.numpy()  # ???转换为numpy, N 维数组对象 ndarray</span><br><span class="line">    x1 = dets[:, 0]  # 取出所有的边界框左上角点的x坐标放入x1</span><br><span class="line">    y1 = dets[:, 1]</span><br><span class="line">    x2 = dets[:, 2]</span><br><span class="line">    y2 = dets[:, 3]</span><br><span class="line">    scores = dets[:, 4]</span><br><span class="line"></span><br><span class="line">    areas = (x2 - x1 + 1) * (y2 - y1 + 1)  # 计算所有边界框的面积</span><br><span class="line">    # numpy的argsort()函数：返回数组值从小到大的索引值，</span><br><span class="line">    # 再加上[::-1]返回数组值从大到小的索引值,</span><br><span class="line">    # 也可以order = np.argsort(-score)</span><br><span class="line">    order = scores.argsort()[::-1]</span><br><span class="line"></span><br><span class="line">    # 思想：每次选出scores中最大的那个边界框</span><br><span class="line">    keep = []</span><br><span class="line">    while order.size &gt; 0:</span><br><span class="line">        i = order[0]</span><br><span class="line">        keep.append(i)  # 保留该类剩余box中得分最高的一个</span><br><span class="line">        xx1 = np.maximum(x1[i], x1[order[1:]])  # 获取得分最高的边界框与其他所有框的的相交区域的左上角x坐标</span><br><span class="line">        yy1 = np.maximum(y1[i], y1[order[1:]])</span><br><span class="line">        xx2 = np.minimum(x2[i], x2[order[1:]])</span><br><span class="line">        yy2 = np.minimum(y2[i], y2[order[1:]])</span><br><span class="line"></span><br><span class="line">        # 计算相交的面积,不重叠时面积为0</span><br><span class="line">        w = np.maximum(0.0, xx2 - xx1 + 1)</span><br><span class="line">        h = np.maximum(0.0, yy2 - yy1 + 1)</span><br><span class="line">        inter = w * h</span><br><span class="line"></span><br><span class="line">        # 计算IOU=重叠面积/(面积1+面积2-重叠面积)</span><br><span class="line">        ovr = inter / (areas[i] + areas[order[1:]] - inter)</span><br><span class="line">        # 保留iou小于等于阈值的边界框，其它则被过滤了</span><br><span class="line">        # numpy.where() 有两种用法：</span><br><span class="line">        # 1.np.where(condition, x, y):满足条件(condition)，输出x，不满足输出y。</span><br><span class="line">        # 2.np.where(condition):输出满足条件(即非0)元素的坐标(等价于numpy.nonzero)</span><br><span class="line">        inds = np.where(ovr &lt;= thresh)[0]</span><br><span class="line">        # 因为ovr数组的长度比order数组少一个,所以这里要将所有下标后移一位,</span><br><span class="line">        # 获得下一个目标区域的得分最高的一个的索引</span><br><span class="line">        order = order[inds + 1]</span><br><span class="line"></span><br><span class="line">    return torch.IntTensor(keep)</span><br></pre></td></tr></table></figure>
@@ -161,6 +165,24 @@
 <section class="read-more">
            
     
+               
+            <div class="read-more-item">
+                <span class="read-more-item-dim">最近的文章</span>
+                <h2 class="post-list__post-title post-title"><a href="/2019/11/28/roi-pooling/" title="Faster RCNN源码解读(2)-roi_pooling">Faster RCNN源码解读(2)-roi_pooling</a></h2>
+                <p class="excerpt">
+                
+                本系列的代码来自：https://github.com/jwyang/faster-rcnn.pytorch大家可以去star一下，目前支持pytorch1.0系列
+参考：
+faster_rcnn_pytorch中的roi_pooling源码解析
+ROI Pooling原理及实现
+####ROI P
+                &hellip;
+                </p>
+                <div class="post-list__meta"><time datetime="2019-11-28T06:51:27.000Z" class="post-list__meta--date date">2019-11-28</time> &#8226; <span class="post-list__meta--tags tags">于 
+  <a class="tag-link" href="/tags/Faster-RCNN%E6%BA%90%E7%A0%81/" rel="tag">Faster RCNN源码</a>
+</span><a class="btn-border-small" href="/2019/11/28/roi-pooling/">继续阅读</a></div>
+                           
+            </div>
         
         
                
